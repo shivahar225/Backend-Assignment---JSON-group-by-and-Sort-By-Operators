@@ -1,0 +1,14 @@
+json-datasets/
+ ├─ pom.xml
+ ├─ src/main/java/com/example/datasets/
+ │   ├─ controller/DatasetController.java
+ │   ├─ service/DatasetService.java
+ │   ├─ domain/Dataset.java
+ │   ├─ domain/RecordEntity.java
+ │   ├─ repo/DatasetRepository.java
+ │   ├─ repo/RecordRepository.java
+ │   ├─ dto/InsertRecordRequest.java
+ │   ├─ dto/QueryResponse.java
+ │   ├─ util/JsonPathUtil.java
+ │   └─ JsonDatasetsApplication.java
+ └─ src/test/java/... (JUnit + MockMvc)
