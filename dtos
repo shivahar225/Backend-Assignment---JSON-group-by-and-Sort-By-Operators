@@ -1,0 +1,23 @@
+// dto/InsertRecordRequest.java
+package com.example.datasets.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import com.fasterxml.jackson.databind.JsonNode;
+
+public record InsertRecordRequest(
+  @NotNull JsonNode record // arbitrary JSON object to persist
+) {}
+
+// dto/QueryResponse.java
+package com.example.datasets.dto;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import java.util.List;
+import java.util.Map;
+
+public record QueryResponse(
+  String message,
+  List<JsonNode> sortedRecords,
+  Map<String, List<JsonNode>> groupedRecords
+) {}
