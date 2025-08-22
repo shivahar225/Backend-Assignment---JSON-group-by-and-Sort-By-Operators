@@ -1,0 +1,26 @@
+// util/JsonPathUtil.java
+package com.example.datasets.util;
+
+import com.fasterxml.jackson.databind.JsonNode;
+
+public class JsonPathUtil {
+  public static JsonNode getByPath(JsonNode node, String path) {
+    if (node == null || path == null || path.isBlank()) return null;
+    String[] parts = path.split("\\.");
+    JsonNode cur = node;
+    for (String p : parts) {
+      if (cur == null) return null;
+      cur = cur.get(p);
+    }
+    return cur;
+  }
+
+  public static String scalarAsString(JsonNode n) {
+    if (n == null || n.isNull()) return null;
+    if (n.isTextual()) return n.asText();
+    if (n.isNumber()) return n.numberValue().toString();
+    if (n.isBoolean()) return Boolean.toString(n.asBoolean());
+    // For non-scalars, return compact JSON for grouping keys
+    return n.toString();
+  }
+}
