@@ -1,0 +1,11 @@
+// repo/RecordRepository.java
+package com.example.datasets.repo;
+
+import com.example.datasets.domain.Dataset;
+import com.example.datasets.domain.RecordEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
+
+public interface RecordRepository extends JpaRepository<RecordEntity, Long> {
+  List<RecordEntity> findByDataset(Dataset dataset);
+}
