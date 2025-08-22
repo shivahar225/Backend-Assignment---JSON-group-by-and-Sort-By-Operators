@@ -1,0 +1,52 @@
+// controller/DatasetController.java
+package com.example.datasets.controller;
+
+import com.example.datasets.dto.InsertRecordRequest;
+import com.example.datasets.dto.QueryResponse;
+import com.example.datasets.service.DatasetService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+import java.util.NoSuchElementException;
+
+@RestController
+@RequestMapping("/api/datasets")
+@RequiredArgsConstructor
+public class DatasetController {
+
+  private final DatasetService service;
+
+  @PostMapping("/{datasetName}/records")
+  public ResponseEntity<Map<String, Object>> insertRecord(
+      @PathVariable String datasetName,
+      @Valid @RequestBody InsertRecordRequest body) {
+    return ResponseEntity.status(HttpStatus.CREATED).body(service.insert(datasetName, body));
+  }
+
+  @GetMapping("/{datasetName}/query")
+  public ResponseEntity<QueryResponse> query(
+      @PathVariable String datasetName,
+      @RequestParam(required = false) String groupBy,
+      @RequestParam(required = false) String sortBy,
+      @RequestParam(required = false, defaultValue = "asc") String order) {
+    return ResponseEntity.ok(service.query(datasetName, groupBy, sortBy, order));
+  }
+
+  // ---- Basic error mapping ----
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<Map<String, Object>> badRequest(IllegalArgumentException ex) {
+    return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+  }
+  @ExceptionHandler(NoSuchElementException.class)
+  public ResponseEntity<Map<String, Object>> notFound(NoSuchElementException ex) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", ex.getMessage()));
+  }
+  @ExceptionHandler(Exception.class)
+  public ResponseEntity<Map<String, Object>> serverError(Exception ex) {
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .body(Map.of("message", "Internal error", "detail", ex.getClass().getSimpleName()));
+  }
+}
