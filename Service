@@ -1,0 +1,110 @@
+// service/DatasetService.java
+package com.example.datasets.service;
+
+import com.example.datasets.domain.Dataset;
+import com.example.datasets.domain.RecordEntity;
+import com.example.datasets.dto.InsertRecordRequest;
+import com.example.datasets.dto.QueryResponse;
+import com.example.datasets.repo.DatasetRepository;
+import com.example.datasets.repo.RecordRepository;
+import com.example.datasets.util.JsonPathUtil;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.time.Instant;
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class DatasetService {
+
+  private final DatasetRepository datasetRepo;
+  private final RecordRepository recordRepo;
+  private final ObjectMapper objectMapper = new ObjectMapper();
+
+  @Transactional
+  public Map<String, Object> insert(String datasetName, InsertRecordRequest req) {
+    if (req == null || req.record() == null || !req.record().isObject()) {
+      throw new IllegalArgumentException("record must be a JSON object");
+    }
+    Dataset ds = datasetRepo.findByNameIgnoreCase(datasetName)
+        .orElseGet(() -> datasetRepo.save(Dataset.builder().name(datasetName).build()));
+
+    String json;
+    try {
+      json = objectMapper.writeValueAsString(req.record()); // normalize
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Invalid JSON", e);
+    }
+
+    RecordEntity saved = recordRepo.save(RecordEntity.builder()
+        .dataset(ds)
+        .json(json)
+        .createdAt(Instant.now())
+        .build());
+
+    return Map.of(
+      "message", "Record added successfully",
+      "dataset", ds.getName(),
+      "recordId", saved.getId()
+    );
+  }
+
+  @Transactional
+  public QueryResponse query(String datasetName, String groupBy, String sortBy, String order) {
+    Dataset ds = datasetRepo.findByNameIgnoreCase(datasetName)
+        .orElseThrow(() -> new NoSuchElementException("Dataset not found: " + datasetName));
+
+    List<JsonNode> records = recordRepo.findByDataset(ds).stream()
+        .map(rec -> {
+          try { return objectMapper.readTree(rec.getJson()); }
+          catch (Exception e) { return null; }
+        })
+        .filter(Objects::nonNull)
+        .toList();
+
+    // Sort (optional)
+    List<JsonNode> sorted = new ArrayList<>(records);
+    if (sortBy != null && !sortBy.isBlank()) {
+      boolean asc = !"desc".equalsIgnoreCase(order);
+      Comparator<JsonNode> cmp = Comparator.comparing(
+        n -> {
+          JsonNode v = JsonPathUtil.getByPath(n, sortBy);
+          if (v == null || v.isNull()) return null;
+          if (v.isNumber()) return v.decimalValue(); // numeric first
+          if (v.isTextual()) return v.asText();
+          return v.toString(); // fallback
+        },
+        (a, b) -> {
+          if (Objects.equals(a, b)) return 0;
+          if (a == null) return 1;       // nulls last
+          if (b == null) return -1;
+          if (a instanceof Number && b instanceof Number) {
+            return ((Number)a).doubleValue() < ((Number)b).doubleValue() ? -1 :
+                   ((Number)a).doubleValue() > ((Number)b).doubleValue() ? 1 : 0;
+          }
+          return a.toString().compareToIgnoreCase(b.toString());
+        }
+      );
+      sorted.sort(asc ? cmp : cmp.reversed());
+    }
+
+    // Group (optional)
+    Map<String, List<JsonNode>> grouped = null;
+    if (groupBy != null && !groupBy.isBlank()) {
+      grouped = records.stream().collect(Collectors.groupingBy(n -> {
+        String key = JsonPathUtil.scalarAsString(JsonPathUtil.getByPath(n, groupBy));
+        return key == null ? "(null)" : key;
+      }, LinkedHashMap::new, Collectors.toList()));
+    }
+
+    return new QueryResponse("success",
+      sortBy == null ? null : sorted,
+      groupBy == null ? null : grouped
+    );
+  }
+}
