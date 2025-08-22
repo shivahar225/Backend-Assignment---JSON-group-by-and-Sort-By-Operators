@@ -1,0 +1,23 @@
+// domain/RecordEntity.java
+package com.example.datasets.domain;
+
+import jakarta.persistence.*;
+import lombok.*;
+import java.time.Instant;
+
+@Entity @Table(name = "records")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class RecordEntity {
+  @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
+
+  @ManyToOne(optional = false, fetch = FetchType.LAZY)
+  @JoinColumn(name = "dataset_id")
+  private Dataset dataset;
+
+  @Column(columnDefinition = "TEXT", nullable = false)
+  private String json; // store raw JSON string (validated before save)
+
+  @Column(nullable = false)
+  private Instant createdAt;
+}
